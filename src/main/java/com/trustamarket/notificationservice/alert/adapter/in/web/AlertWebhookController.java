@@ -6,7 +6,6 @@ import com.trustamarket.notificationservice.alert.domain.model.Alert;
 import com.trustamarket.notificationservice.alert.domain.model.AlertSeverity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,8 +27,10 @@ public class AlertWebhookController {
 
     @PostMapping("/webhook")
     public ResponseEntity<Void> receive(@RequestBody AlertManagerWebhookRequest request) {
+        // 빈 alerts 는 정상 케이스 ("no active alerts" 통지) — 200 으로 ack 만 하고 발송 X.
+        // 400 으로 돌리면 AlertManager 가 webhook 재시도/실패 알림을 띄울 수 있어 시끄러워짐.
         if (request == null || request.alerts() == null || request.alerts().isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+            return ResponseEntity.ok().build();
         }
 
         List<Alert> alerts = request.alerts().stream()

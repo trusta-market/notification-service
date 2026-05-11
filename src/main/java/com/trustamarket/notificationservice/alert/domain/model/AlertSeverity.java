@@ -20,7 +20,8 @@ public enum AlertSeverity {
 
     public static AlertSeverity from(String label) {
         if (label == null) return INFO;
-        return switch (label.toLowerCase()) {
+        // Locale.ROOT 명시 — 터키어 등 일부 locale 의 case 변환 함정 회피.
+        return switch (label.toLowerCase(java.util.Locale.ROOT)) {
             case "critical" -> CRITICAL;
             case "warning"  -> WARNING;
             default          -> INFO;

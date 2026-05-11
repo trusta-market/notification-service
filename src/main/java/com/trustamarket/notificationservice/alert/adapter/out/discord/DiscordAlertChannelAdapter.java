@@ -6,11 +6,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.time.Instant;
+import java.net.http.HttpClient;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -32,6 +34,8 @@ public class DiscordAlertChannelAdapter implements AlertChannelPort {
     private static final DateTimeFormatter TS_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.of("Asia/Seoul"));
     private static final int MAX_EXTRA_LABEL_FIELDS = 6;
+    private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration READ_TIMEOUT = Duration.ofSeconds(5);
 
     private final String webhookUrl;
     private final RestClient restClient;
@@ -41,7 +45,12 @@ public class DiscordAlertChannelAdapter implements AlertChannelPort {
             throw new IllegalStateException("DISCORD_WEBHOOK_URL 환경변수 미설정 — notification-service 는 webhook URL 없이 시작 불가");
         }
         this.webhookUrl = webhookUrl;
-        this.restClient = RestClient.builder().build();
+        // RestClient 기본값은 connect/read timeout 무한 — Discord 가 느리거나 응답 없으면 caller thread 블록.
+        // JDK HttpClient + JdkClientHttpRequestFactory 로 명시적 timeout 부여.
+        HttpClient httpClient = HttpClient.newBuilder().connectTimeout(CONNECT_TIMEOUT).build();
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(READ_TIMEOUT);
+        this.restClient = RestClient.builder().requestFactory(factory).build();
     }
 
     @Override
