@@ -23,7 +23,7 @@ public class NotificationSecurityConfig {
     public SecurityFilterChain notificationSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .securityMatcher(
-                        "/api/v1/alerts/**",
+                        "/api/v1/alerts/webhook",
                         "/actuator/health",
                         "/actuator/health/**",
                         "/actuator/info",

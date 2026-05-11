@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 // AlertManager 의 webhook_configs 가 호출. payload → 도메인 Alert list 변환 → SendAlertUseCase.
 @Slf4j
@@ -33,7 +34,9 @@ public class AlertWebhookController {
             return ResponseEntity.ok().build();
         }
 
+        // alerts 안에 null 항목이 섞여오는 케이스 방어 — 한 건 때문에 batch 전체 NPE 로 500 가는 일 없게.
         List<Alert> alerts = request.alerts().stream()
+                .filter(Objects::nonNull)
                 .map(item -> toDomain(item, request.commonLabels()))
                 .toList();
         sendAlertUseCase.send(alerts);
