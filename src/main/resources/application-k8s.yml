@@ -2,6 +2,11 @@
 # notification-service 는 config-server 안 씀. DB / Spring Security 도 사실상 안 씀 (DataSource 자동 설정 제외).
 # Eureka 만 register 활성 + Discord webhook URL 은 Deployment env 의 secretKeyRef.
 
+spring:
+  # Kafka — GKE namespace 'kafka' 의 StatefulSet 3 broker. 새 cluster (별도 CLUSTER_ID), 토픽 초기화됨.
+  kafka:
+    bootstrap-servers: kafka.kafka:9092
+
 eureka:
   client:
     service-url:
