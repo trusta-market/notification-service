@@ -1,0 +1,12 @@
+# K8s 환경 전용 override (SPRING_PROFILES_ACTIVE=k8s 일 때만 로드).
+# notification-service 는 config-server 안 씀. DB / Spring Security 도 사실상 안 씀 (DataSource 자동 설정 제외).
+# Eureka 만 register 활성 + Discord webhook URL 은 Deployment env 의 secretKeyRef.
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
