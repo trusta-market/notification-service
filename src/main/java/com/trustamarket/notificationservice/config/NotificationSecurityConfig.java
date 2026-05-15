@@ -23,7 +23,9 @@ public class NotificationSecurityConfig {
     public SecurityFilterChain notificationSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .securityMatcher(
-                        "/api/v1/alerts/**",
+                        // wildcard 대신 명시적 path 만 — 미래 endpoint 가 무의식적으로 노출되지 않게.
+                        "/api/v1/alerts/webhook",
+                        "/api/v1/alerts/cloud-monitoring",
                         "/actuator/health",
                         "/actuator/health/**",
                         "/actuator/info",

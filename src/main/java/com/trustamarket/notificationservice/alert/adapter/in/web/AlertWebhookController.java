@@ -79,11 +79,15 @@ public class AlertWebhookController {
     private static Alert toDomain(CloudMonitoringWebhookRequest.Incident incident) {
         Map<String, String> resourceLabels = incident.resource() != null && incident.resource().labels() != null
                 ? incident.resource().labels() : Map.of();
+        Map<String, String> metricLabels = incident.metric() != null && incident.metric().labels() != null
+                ? incident.metric().labels() : Map.of();
         Map<String, String> userLabels = incident.policy_user_labels() != null
                 ? incident.policy_user_labels() : Map.of();
 
+        // 우선순위: resource → metric → user. user_labels 가 마지막이라 충돌 시 user 값 우선.
         Map<String, String> mergedLabels = new HashMap<>();
         mergedLabels.putAll(resourceLabels);
+        mergedLabels.putAll(metricLabels);
         mergedLabels.putAll(userLabels);
         // Cloud Monitoring 의 k8s_container resource 에서 container_name 을 service 명으로 매핑.
         String containerName = resourceLabels.get("container_name");
@@ -91,7 +95,8 @@ public class AlertWebhookController {
         if (incident.observed_value() != null) mergedLabels.put("observed", incident.observed_value());
         if (incident.threshold_value() != null) mergedLabels.put("threshold", incident.threshold_value());
 
-        String status = "OPEN".equalsIgnoreCase(incident.state()) ? "firing" : "resolved";
+        // unknown / null state 일 때 false resolved 발송 회피 — CLOSED 만 명시적 resolved, 그 외 firing.
+        String status = "CLOSED".equalsIgnoreCase(incident.state()) ? "resolved" : "firing";
         String name = incident.policy_name() != null ? incident.policy_name() : "unknown";
         String summary = incident.summary() != null ? incident.summary() : name;
         String description = incident.condition_name() != null ? incident.condition_name() : "";
