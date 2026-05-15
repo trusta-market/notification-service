@@ -1,6 +1,7 @@
 package com.trustamarket.notificationservice.alert.adapter.in.web;
 
 import com.trustamarket.notificationservice.alert.adapter.in.web.dto.AlertManagerWebhookRequest;
+import com.trustamarket.notificationservice.alert.adapter.in.web.dto.CloudMonitoringWebhookRequest;
 import com.trustamarket.notificationservice.alert.application.port.in.SendAlertUseCase;
 import com.trustamarket.notificationservice.alert.domain.model.Alert;
 import com.trustamarket.notificationservice.alert.domain.model.AlertSeverity;
@@ -13,11 +14,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-// AlertManager 의 webhook_configs 가 호출. payload → 도메인 Alert list 변환 → SendAlertUseCase.
+// Webhook 수신 endpoint 두 종류:
+// - /webhook            : Prometheus AlertManager 포맷 (alerts 리스트)
+// - /cloud-monitoring   : GCP Cloud Monitoring 포맷 (incident 단건)
+// 둘 다 도메인 Alert 로 변환해서 SendAlertUseCase 로 위임.
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/alerts")
@@ -43,6 +48,18 @@ public class AlertWebhookController {
         return ResponseEntity.ok().build();
     }
 
+    // Cloud Monitoring 알림 정책의 webhook notification channel 이 호출.
+    // 한 incident 가 OPEN 될 때 / CLOSED 될 때 각각 1번씩.
+    @PostMapping("/cloud-monitoring")
+    public ResponseEntity<Void> receiveCloudMonitoring(@RequestBody CloudMonitoringWebhookRequest request) {
+        if (request == null || request.incident() == null) {
+            return ResponseEntity.ok().build();
+        }
+        Alert alert = toDomain(request.incident());
+        sendAlertUseCase.send(List.of(alert));
+        return ResponseEntity.ok().build();
+    }
+
     private static Alert toDomain(AlertManagerWebhookRequest.AlertItem item, Map<String, String> commonLabels) {
         Map<String, String> labels = item.labels() != null ? item.labels() : Map.of();
         Map<String, String> ann = item.annotations() != null ? item.annotations() : Map.of();
@@ -54,6 +71,44 @@ public class AlertWebhookController {
                 ann.getOrDefault("description", ""),
                 labels,
                 item.startsAt() != null ? item.startsAt().toInstant() : Instant.now()
+        );
+    }
+
+    // Cloud Monitoring incident → Alert 도메인 매핑.
+    // severity 는 알림 정책의 policy_user_labels.severity 에 박아 두기로 약속 (e.g. critical / warning).
+    private static Alert toDomain(CloudMonitoringWebhookRequest.Incident incident) {
+        Map<String, String> resourceLabels = incident.resource() != null && incident.resource().labels() != null
+                ? incident.resource().labels() : Map.of();
+        Map<String, String> metricLabels = incident.metric() != null && incident.metric().labels() != null
+                ? incident.metric().labels() : Map.of();
+        Map<String, String> userLabels = incident.policy_user_labels() != null
+                ? incident.policy_user_labels() : Map.of();
+
+        // 우선순위: resource → metric → user. user_labels 가 마지막이라 충돌 시 user 값 우선.
+        Map<String, String> mergedLabels = new HashMap<>();
+        mergedLabels.putAll(resourceLabels);
+        mergedLabels.putAll(metricLabels);
+        mergedLabels.putAll(userLabels);
+        // Cloud Monitoring 의 k8s_container resource 에서 container_name 을 service 명으로 매핑.
+        String containerName = resourceLabels.get("container_name");
+        if (containerName != null) mergedLabels.put("service", containerName);
+        if (incident.observed_value() != null) mergedLabels.put("observed", incident.observed_value());
+        if (incident.threshold_value() != null) mergedLabels.put("threshold", incident.threshold_value());
+
+        // unknown / null state 일 때 false resolved 발송 회피 — CLOSED 만 명시적 resolved, 그 외 firing.
+        String status = "CLOSED".equalsIgnoreCase(incident.state()) ? "resolved" : "firing";
+        String name = incident.policy_name() != null ? incident.policy_name() : "unknown";
+        String summary = incident.summary() != null ? incident.summary() : name;
+        String description = incident.condition_name() != null ? incident.condition_name() : "";
+
+        return new Alert(
+                status,
+                AlertSeverity.from(userLabels.get("severity")),
+                name,
+                summary,
+                description,
+                mergedLabels,
+                incident.started_at() != null ? Instant.ofEpochSecond(incident.started_at()) : Instant.now()
         );
     }
 }
