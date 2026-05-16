@@ -94,6 +94,8 @@ public class AlertWebhookController {
         if (containerName != null) mergedLabels.put("service", containerName);
         if (incident.observed_value() != null) mergedLabels.put("observed", incident.observed_value());
         if (incident.threshold_value() != null) mergedLabels.put("threshold", incident.threshold_value());
+        // Cloud Monitoring incident URL — Discord 에서 markdown link 로 노출 (메트릭 + log 까지 한 번에 점프).
+        if (incident.url() != null) mergedLabels.put("incident_url", incident.url());
 
         // unknown / null state 일 때 false resolved 발송 회피 — CLOSED 만 명시적 resolved, 그 외 firing.
         String status = "CLOSED".equalsIgnoreCase(incident.state()) ? "resolved" : "firing";
