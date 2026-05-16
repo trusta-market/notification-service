@@ -15,3 +15,9 @@ eureka:
     fetch-registry: true
   instance:
     prefer-ip-address: true
+
+# common 의 LoginFilter 가 gateway 의 X-User-* 헤더 → SecurityContext 로 주입.
+# false (default) 면 LoginFilter skip → 인증 path 401.
+trusta:
+  security:
+    trust-gateway-headers: true
