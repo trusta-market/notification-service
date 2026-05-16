@@ -26,6 +26,7 @@ public class NotificationSecurityConfig {
                         // wildcard 대신 명시적 path 만 — 미래 endpoint 가 무의식적으로 노출되지 않게.
                         "/api/v1/alerts/webhook",
                         "/api/v1/alerts/cloud-monitoring",
+                        "/api/v1/alerts/deploy-failure",
                         "/actuator/health",
                         "/actuator/health/**",
                         "/actuator/info",
