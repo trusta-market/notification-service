@@ -2,6 +2,7 @@ package com.trustamarket.notificationservice.alert.adapter.in.web;
 
 import com.trustamarket.notificationservice.alert.adapter.in.web.dto.AlertManagerWebhookRequest;
 import com.trustamarket.notificationservice.alert.adapter.in.web.dto.CloudMonitoringWebhookRequest;
+import com.trustamarket.notificationservice.alert.adapter.in.web.dto.DeployFailureWebhookRequest;
 import com.trustamarket.notificationservice.alert.application.port.in.SendAlertUseCase;
 import com.trustamarket.notificationservice.alert.domain.model.Alert;
 import com.trustamarket.notificationservice.alert.domain.model.AlertSeverity;
@@ -48,6 +49,16 @@ public class AlertWebhookController {
         return ResponseEntity.ok().build();
     }
 
+    // GitHub Actions deploy workflow 의 실패 시 reusable workflow 가 호출.
+    // service / commit / actor / runUrl / branch / reason / logs 를 받아 Alert 도메인으로 변환.
+    @PostMapping("/deploy-failure")
+    public ResponseEntity<Void> receiveDeployFailure(@RequestBody DeployFailureWebhookRequest request) {
+        if (request == null) return ResponseEntity.ok().build();
+        Alert alert = toDomain(request);
+        sendAlertUseCase.send(List.of(alert));
+        return ResponseEntity.ok().build();
+    }
+
     // Cloud Monitoring 알림 정책의 webhook notification channel 이 호출.
     // 한 incident 가 OPEN 될 때 / CLOSED 될 때 각각 1번씩.
     @PostMapping("/cloud-monitoring")
@@ -71,6 +82,31 @@ public class AlertWebhookController {
                 ann.getOrDefault("description", ""),
                 labels,
                 item.startsAt() != null ? item.startsAt().toInstant() : Instant.now()
+        );
+    }
+
+    // GitHub Actions deploy 실패 webhook → Alert 도메인 매핑.
+    // strategy 매칭 위해 name="deploy-failure" 고정. severity 는 CRITICAL (배포 실패는 항상 심각).
+    private static Alert toDomain(DeployFailureWebhookRequest req) {
+        Map<String, String> labels = new HashMap<>();
+        if (req.service() != null) labels.put("service", req.service());
+        if (req.commit() != null) labels.put("commit", req.commit());
+        if (req.actor() != null) labels.put("actor", req.actor());
+        if (req.runUrl() != null) labels.put("run_url", req.runUrl());
+        if (req.branch() != null) labels.put("branch", req.branch());
+        if (req.logs() != null) labels.put("logs", req.logs());
+
+        String summary = "배포 실패 — " + (req.service() != null ? req.service() : "unknown");
+        String description = req.reason() != null ? req.reason() : "GitHub Actions workflow 가 실패. 상세는 run URL 참조.";
+
+        return new Alert(
+                "firing",
+                AlertSeverity.CRITICAL,
+                "deploy-failure",
+                summary,
+                description,
+                labels,
+                Instant.now()
         );
     }
 
