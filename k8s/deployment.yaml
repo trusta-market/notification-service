@@ -45,13 +45,16 @@ spec:
                 secretKeyRef:
                   name: notification-secrets
                   key: DISCORD_WEBHOOK_URL
+          # request 는 실 사용량 기반 (CPU ~3m, memory ~250Mi, burst 여유 포함).
+          # limit 은 thread 800 stack (~800MB) + heap (limit*25%=500MB) + 기타 = ~1.5GB 안에 맞춤.
+          # request 줄임 → 노드당 pod 수 증가 → HPA scale 자리 확보.
           resources:
             requests:
-              cpu: 500m
-              memory: 2Gi
+              cpu: 100m
+              memory: 800Mi
             limits:
-              cpu: 1000m
-              memory: 2500Mi
+              cpu: 1500m
+              memory: 2Gi
           startupProbe:
             httpGet:
               path: /actuator/health
