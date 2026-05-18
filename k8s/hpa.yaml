@@ -1,22 +1,23 @@
-# notification 은 Kafka consumer 라 사용자 HTTP traffic 적음 — CPU 기반 scale 의 의미는 작음.
-# 다만 actuator probe / Discord webhook burst 시 단일 pod 부담 대비 max 3 까지 허용 (다른 service 보다 보수적).
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: notification-service
-  labels:
-    app: notification-service
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: notification-service
-  minReplicas: 1
-  maxReplicas: 3
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 70
+# HPA 비활성 (부하 측정 시 일관된 환경 위해 replicas 1 고정).
+# 활성화 시 아래 주석 풀고 workflow 의 'Apply HPA' step 도 같이 활성화.
+#
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: notification-service
+#   labels:
+#     app: notification-service
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: notification-service
+#   minReplicas: 1
+#   maxReplicas: 3
+#   metrics:
+#     - type: Resource
+#       resource:
+#         name: cpu
+#         target:
+#           type: Utilization
+#           averageUtilization: 70
