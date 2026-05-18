@@ -2,15 +2,6 @@
 # notification-service 는 config-server 안 씀. DB / Spring Security 도 사실상 안 씀 (DataSource 자동 설정 제외).
 # Eureka 만 register 활성 + Discord webhook URL 은 Deployment env 의 secretKeyRef.
 
-server:
-  # Tomcat — 다른 service 와 통일 셋. notification 은 HTTP traffic 적지만 actuator/health probe 가
-  # 부하 시 응답 늦으면 restart 위험 → thread queue 여유 둠.
-  tomcat:
-    threads:
-      max: 800
-    accept-count: 300
-    max-connections: 20000
-
 spring:
   # Kafka — GKE namespace 'kafka' 의 StatefulSet 3 broker. 새 cluster (별도 CLUSTER_ID), 토픽 초기화됨.
   kafka:
