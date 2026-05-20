@@ -31,3 +31,5 @@ trusta:
   notification:
     discord:
       webhook-url: ${DISCORD_WEBHOOK_URL}
+  swagger:
+    expose-public: ${TRUSTA_SWAGGER_EXPOSE_PUBLIC:true}

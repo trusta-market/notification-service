@@ -37,7 +37,7 @@ ext {
 }
 
 dependencies {
-	implementation 'com.trustamarket:common:0.3.0-SNAPSHOT'
+	implementation 'com.trustamarket:common:0.4.0-SNAPSHOT'
 	implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'io.micrometer:micrometer-registry-prometheus'
